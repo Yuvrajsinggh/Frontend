@@ -1,22 +1,49 @@
 import { View, Text, Image, TextInput, TouchableOpacity, KeyboardAvoidingView } from 'react-native'
-import React from 'react'
+import React, { useState } from 'react'
 import { StatusBar } from 'expo-status-bar'
 import Animated, {FadeInDown, FadeInUp} from 'react-native-reanimated'
 import { useNavigation } from '@react-navigation/native'
-
+import axios from 'axios';
+import Toast from 'react-native-toast-message'
 
 export default function LoginScreen() {
     const navigation = useNavigation();
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+
     const onSignIn = async () => {
-      // console.warn('Sign in');
-        navigation.push('Confirm')
-      //   try {
-      //     await login({ email });
-      //     router.push({ pathname: '/authenticate', params: { email } });
-      //   } catch (e) {
-      //     Alert.alert('Error', e.message);
-      //   }
-      };
+        setIsLoading(true);
+        try {
+            const response = await axios.post('http://13.127.120.108:7000/api/auth/send-otp/', { email, password });
+            if(response.data.message == "OTP sent") {
+                Toast.show({
+                    type: 'success',
+                    position: 'bottom',
+                    text1: 'Success',
+                    text2: 'OTP sent successfully',
+                    visibilityTime: 1000,
+                    autoHide: true,
+                    topOffset: 30,
+                    bottomOffset: 40,
+                    onHide: () => {
+                        navigation.push('Confirm', { email: email });
+                    }
+                });
+            }
+        } catch (error) {
+            if(error.response.status === 400) {
+                alert('User with given email does not exist');
+            } else if(error.response.status === 401) {
+                alert('Password is incorrect, please enter right password');
+            } else {
+                alert('An error occurred');
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
   return (
     <KeyboardAvoidingView behavior='height'>
     <View className="bg-white h-full w-full">
@@ -41,12 +68,15 @@ export default function LoginScreen() {
             {/* form */}
             <View className="flex items-center mx-4 space-y-4 pt-10 pb-10">
                 <Animated.View entering={FadeInDown.duration(1000).springify()} className="bg-black/5 p-5 rounded-2xl w-full">
-                    <TextInput placeholder="Email" placeholderTextColor={'gray'} />
+                    <TextInput placeholder="Email" placeholderTextColor={'gray'} value={email} onChangeText={setEmail}/>
                 </Animated.View>
-                <Animated.View entering={FadeInDown.delay(200).duration(1000).springify()} className="w-full">
+                <Animated.View entering={FadeInDown.duration(1000).delay(200).springify()} className="bg-black/5 p-5 rounded-2xl w-full">
+                    <TextInput placeholder="password" placeholderTextColor={'gray'} secureTextEntry value={password} onChangeText={setPassword}/>
+                </Animated.View>
+                <Animated.View entering={FadeInDown.delay(400).duration(1000).springify()} className="w-full">
                     <TouchableOpacity 
-                        className="w-full bg-sky-400 p-3 rounded-xl mb-3" onPress={onSignIn}>
-                            <Text className="text-xl font-bold text-white text-center">Sign In</Text>
+                        className={`w-full ${isLoading ? 'bg-gray-400' : 'bg-sky-400'} p-3 rounded-xl mb-3`} onPress={onSignIn} disabled={isLoading}>
+                            <Text className="text-xl font-bold text-white text-center">{isLoading ? 'Loading...' : 'Sign In'}</Text>
                     </TouchableOpacity>
                 </Animated.View>
             </View>
